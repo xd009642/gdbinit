@@ -23,12 +23,10 @@ class RegisterBase(gdb.Command):
 
     def read_address(self, a, length = 4):
         inf = gdb.inferiors()
-        print(inf)
         if len(inf) > 0:
             inf = inf[0]
-            mem = inf.read_memory(int(a), length)
-            print(hex(mem.tobytes().hex()))
-
+            gdb.execute('x '+str(a))
+    
     class ListRegistersCommand(gdb.Command):
         "List the available registers to interact with"
         def __init__(self, rb):
