@@ -21,15 +21,16 @@ class RegisterBase(gdb.Command):
     def list_registers(self):
         pass
 
-    def read_address(a, length = 4):
-        
+    def read_address(self, a, length = 4):
         inf = gdb.inferiors()
+        print(inf)
         if len(inf) > 0:
             inf = inf[0]
-            mem = inf.read_memory(a, length)
+            mem = inf.read_memory(int(a), length)
             print(hex(mem.tobytes().hex()))
 
     class ListRegistersCommand(gdb.Command):
+        "List the available registers to interact with"
         def __init__(self, rb):
             cmd = rb.cmd_name + " list-registers"
             gdb.Command.__init__(self, cmd, gdb.COMMAND_USER, gdb.COMPLETE_NONE)
@@ -46,16 +47,22 @@ class RegisterBase(gdb.Command):
             pass
 
     class ReadRegisterCommand(gdb.Command):
+        "Read the contents of a register (use the short name)"
         def __init__(self, rb):
             cmd = rb.cmd_name + " read-register"
             gdb.Command.__init__(self, cmd, gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
             self.rb = rb
         
         def invoke(self, arg, from_tty):
-            print(arg)
-            self.rb.read_address(self.rb.get_address(arg))
+            addr = self.rb.get_address(arg)
+            if addr != None:
+                self.rb.read_address(addr)
+            else:
+                print("Register '"+arg+"' not recognised")
 
 class CortexM4(RegisterBase):
+    "Use this command to access cortex-m4 specific registers"
+
     def __init__(self):
         RegisterBase.__init__(self, 'cortex-m4')
         RegisterBase.ListRegistersCommand(self)
@@ -88,9 +95,10 @@ class CortexM4(RegisterBase):
             print(k + ":\t"+str(r))
 
     def get_address(self, addr):
-        reg = self.registers[addr]
+        reg = self.registers.get(addr, None)
         if reg != None:
-            return str(reg.addr)
+            return reg.addr
+        return None
 
     @staticmethod
     def start():
