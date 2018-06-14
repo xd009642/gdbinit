@@ -105,6 +105,13 @@ class CortexM4(RegisterBase):
         cortex_m4 = CortexM4()
 end
 
+define openocd_connect
+    target remote :3333
+    monitor arm semihosting enable 
+    monitor reset halt
+end
+
+
 set print pretty on
 set python print-stack full
 
