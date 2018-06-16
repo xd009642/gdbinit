@@ -2,7 +2,7 @@ python
 from array import array
 import struct
 import sys
-print(sys.version);
+print("xd009642 gdb init. Python " +sys.version);
 
 class reg():
 
@@ -37,6 +37,11 @@ class RegisterBase(gdb.Command):
         else:
             return []
    
+    def write_address(self, addr, data):
+        inf = gdb.inferiors()[0]
+        if inf.is_valid():
+            data = struct.pack("<I", data)
+            value = inf.write_memory(addr, data, 4)
 
     class ListRegistersCommand(gdb.Command):
         "List the available registers to interact with"
@@ -70,6 +75,25 @@ class RegisterBase(gdb.Command):
             else:
                 print("Register '"+arg+"' not recognised")
 
+    class WriteRegisterCommand(gdb.Command):
+        "write the contents of a register given register short name and hex data"
+        def __init__(self, rb):
+            cmd = rb.cmd_name + " write-register"
+            gdb.Command.__init__(self, cmd, gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
+            self.rb = rb
+
+        def invoke(self, arg, from_tty):
+            args = arg.split()
+            if len(args) == 2:
+                addr = self.rb.get_address(args[0])
+                data = int(args[1], 16)
+                if addr != None:
+                    self.rb.write_address(addr, data)
+                else:
+                    print("Register '"+arg+"' not recognised")
+            else:
+                print("Invalid args specified. Give args as <SHORT_NAME> <DATA>")
+
 class CortexM4(RegisterBase):
     "Use this command to access cortex-m4 specific registers"
 
@@ -77,6 +101,7 @@ class CortexM4(RegisterBase):
         RegisterBase.__init__(self, 'cortex-m4')
         RegisterBase.ListRegistersCommand(self)
         RegisterBase.ReadRegisterCommand(self)
+        RegisterBase.WriteRegisterCommand(self)
 
         self.registers = {
             "actlr"   : reg(0xE000E008, "Auxiliary control"),
