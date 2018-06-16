@@ -1,4 +1,8 @@
 python
+from array import array
+import struct
+import sys
+print(sys.version);
 
 class reg():
 
@@ -14,6 +18,7 @@ class reg():
         return self.access + "\t" +self.desc+ " ("+hex(self.addr)+ ")" 
 
 class RegisterBase(gdb.Command):
+    
     def __init__(self, command_name):
         gdb.Command.__init__(self, command_name, gdb.COMMAND_USER, gdb.COMPLETE_NONE, True)
         self.cmd_name = command_name
@@ -23,10 +28,16 @@ class RegisterBase(gdb.Command):
 
     def read_address(self, a, length = 4):
         inf = gdb.inferiors()
-        if len(inf) > 0:
+        if len(inf) > 0 and inf[0].is_valid():
             inf = inf[0]
-            gdb.execute('x '+str(a))
-    
+            value = inf.read_memory(a, length);
+            value = bytearray(value)
+            value = struct.unpack("<I", value)
+            return value[0]
+        else:
+            return []
+   
+
     class ListRegistersCommand(gdb.Command):
         "List the available registers to interact with"
         def __init__(self, rb):
@@ -50,11 +61,12 @@ class RegisterBase(gdb.Command):
             cmd = rb.cmd_name + " read-register"
             gdb.Command.__init__(self, cmd, gdb.COMMAND_USER, gdb.COMPLETE_FILENAME)
             self.rb = rb
-        
+
         def invoke(self, arg, from_tty):
             addr = self.rb.get_address(arg)
             if addr != None:
-                self.rb.read_address(addr)
+                value = self.rb.read_address(addr)
+                print(hex(value))
             else:
                 print("Register '"+arg+"' not recognised")
 
@@ -65,7 +77,7 @@ class CortexM4(RegisterBase):
         RegisterBase.__init__(self, 'cortex-m4')
         RegisterBase.ListRegistersCommand(self)
         RegisterBase.ReadRegisterCommand(self)
-        
+
         self.registers = {
             "actlr"   : reg(0xE000E008, "Auxiliary control"),
             "cpuid"   : reg(0xE000ED00, "CPUID Base", "ro"),
@@ -89,7 +101,7 @@ class CortexM4(RegisterBase):
         }
 
     def list_registers(self):
-        for k, r in self.registers.items():
+        for k, r in sorted(self.registers.items(), key=lambda x:x[1].addr):
             print(k + ":\t"+str(r))
 
     def get_address(self, addr):
@@ -97,10 +109,12 @@ class CortexM4(RegisterBase):
         if reg != None:
             return reg.addr
         return None
-
+    
     @staticmethod
     def start():
         cortex_m4 = CortexM4()
+
+        
 end
 
 define openocd_connect
